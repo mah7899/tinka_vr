@@ -125,30 +125,30 @@ function startListening() {
 
 
 
-        async function callCHATGPT(question) {
-            var xhr = new XMLHttpRequest();
-            var url = "https://api.openai.com/v1/chat/completions";
-            xhr.open("POST", url, true);
-            xhr.setRequestHeader("Content-Type", "application/json");
-            xhr.setRequestHeader("Authorization", "Bearer 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");
-            xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    var json = JSON.parse(xhr.responseText);
-                    var response = json.choices[0].message.content;
-                    speak(response);
+async function callCHATGPT(question) {
+            try {
+                // Assuming your Express server has an endpoint "/api/chat" to handle the requests
+                // Replace 'YOUR_SERVER_URL' with the actual URL of your deployed server
+                const url = "YOUR_SERVER_URL/api/chat";
+                
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ question })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
                 }
-            };
-
-            var data = JSON.stringify({
-                "messages":  [{"role": "user", "content": question}],
-                "temperature": 0.5,
-                "top_p": 1,
-                "frequency_penalty": 0,
-                "presence_penalty": 0,
-                "model": "gpt-3.5-turbo"
-            });
-
-            xhr.send(data);
+                
+                const data = await response.json();
+                speak(data.answer);
+                
+            } catch (error) {
+                console.error('Error during API call', error);
+            }
         }
 
  
