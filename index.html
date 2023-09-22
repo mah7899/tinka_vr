@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
+</head>
+
+<body>
+    <a-scene background="color: #ECECEC">
+        <!-- Inside the a-scene -->
+        <a-camera position="0 1.6 0">
+            <a-cursor
+                animation__click="property: scale; startEvents: click; from: 0.1 0.1 0.1; to: 1 1 1; dur: 150"
+                raycaster="objects: .clickable">
+            </a-cursor>
+        </a-camera>
+
+        <a-assets>
+            <a-asset-item id="classroom" src="anime_classroom.glb"></a-asset-item>
+            <a-asset-item id="human" src="avatar.glb"></a-asset-item>
+        </a-assets>
+
+        <a-entity gltf-model="#classroom" position="0 0 -5"></a-entity>
+        <a-entity class="clickable" gltf-model="#human" position="1 0 -4" scale="1 1 1" onclick="greetAndListen()"></a-entity>
+    </a-scene>
+
+    <script>
+
+
+
+// New function to handle quizzes
+function startListeningForAnswer() {
+    const recognition = new webkitSpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.start();
+
+    recognition.onresult = function(event) {
+        let spokenAnswer = event.results[0][0].transcript;
+        
+        // Retrieve the correct answer from session storage
+        let correctAnswer = sessionStorage.getItem('quizAnswer');
+        
+        // Check if the spoken answer matches the correct one (consider using some tolerance or natural language processing for better matching)
+        if (parseInt(spokenAnswer) === parseInt(correctAnswer)) {
+            speak("Correct! Well done.");
+        } else {
+            speak(`Sorry, that's not right. The correct answer is ${correctAnswer}.`);
+        }
+    };
+}
+
+// Call this function right after asking the quiz question
+function speak(text, callback) {
+    let voices = window.speechSynthesis.getVoices();
+    let msg = new SpeechSynthesisUtterance(text);
+
+    if (voices.length > 0) {
+        msg.voice = voices[0]; // Choose the appropriate voice here
+    }
+
+    msg.rate = 0.7; // Modify as per preference
+    msg.pitch = 1;
+
+    msg.onend = function() {
+        if (callback) {
+            callback();
+        }
+    };
+
+    window.speechSynthesis.speak(msg);
+}
+
+// Updated generateQuizQuestion function
+function generateQuizQuestion() {
+    let num1 = Math.floor(Math.random() * 100);
+    let num2 = Math.floor(Math.random() * 100);
+    let question = `What is ${num1} plus ${num2}?`;
+    let answer = num1 + num2;
+    
+    // Store the answer for later verification
+    sessionStorage.setItem('quizAnswer', answer);
+    
+    speak(question, startListeningForAnswer); // After speaking the question, start listening for the answer
+}
+
+
+function greetAndListen() {
+    let voices = window.speechSynthesis.getVoices();
+    
+
+    const greeting = new SpeechSynthesisUtterance("Hi, how can I help you?");
+     
+    if (voices.length > 0) {
+        greeting.voice = voices[0]; // Choose the appropriate voice here
+    }
+
+    greeting.rate = 0.7; // Modify as per preference
+    greeting.pitch = 1;
+    window.speechSynthesis.speak(greeting);
+
+    // Wait for greeting to finish before starting the microphone
+    greeting.onend = function() {
+        startListening();
+    }
+}
+
+function startListening() {
+    const recognition = new webkitSpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.start();
+
+    recognition.onresult = function(event) {
+        let spokenText = event.results[0][0].transcript;
+        
+        // Redirect to quiz if user asks for a quiz or general knowledge question
+        if (spokenText.includes('quiz') || spokenText.includes('general knowledge')) {
+            let quizQuestion = generateQuizQuestion();
+            speak(quizQuestion);
+        } else {
+            callCHATGPT(spokenText);
+        }
+    };
+}
+
+
+
+
+        async function callCHATGPT(question) {
+            var xhr = new XMLHttpRequest();
+            var url = "https://api.openai.com/v1/chat/completions";
+            xhr.open("POST", url, true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.setRequestHeader("Authorization", "Bearer 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");
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    var json = JSON.parse(xhr.responseText);
+                    var response = json.choices[0].message.content;
+                    speak(response);
+                }
+            };
+
+            var data = JSON.stringify({
+                "messages":  [{"role": "user", "content": question}],
+                "temperature": 0.5,
+                "top_p": 1,
+                "frequency_penalty": 0,
+                "presence_penalty": 0,
+                "model": "gpt-3.5-turbo"
+            });
+
+            xhr.send(data);
+        }
+
+ 
+    </script>
+
+</body>
+
+</html>
